@@ -1,0 +1,38 @@
+[
+  {
+    "pair": "EUR/USD",
+    "timestamp": "2026-02-28T18:27:49.513493Z",
+    "rsi": 69.0,
+    "trend_score": 0.33,
+    "volatility_regime": "low",
+    "atr_percentile": 0.09,
+    "technical_alignment_score": 0.32199999999999995
+  },
+  {
+    "pair": "GBP/USD",
+    "timestamp": "2026-02-28T18:27:49.513493Z",
+    "rsi": 50.0,
+    "trend_score": 0.0,
+    "volatility_regime": "low",
+    "atr_percentile": 0.0,
+    "technical_alignment_score": 0.45
+  },
+  {
+    "pair": "USD/CAD",
+    "timestamp": "2026-02-28T18:27:49.513493Z",
+    "rsi": 33.0,
+    "trend_score": 0.81,
+    "volatility_regime": "low",
+    "atr_percentile": 0.13,
+    "technical_alignment_score": 0.45000000000000007
+  },
+  {
+    "pair": "USD/JPY",
+    "timestamp": "2026-02-28T18:27:49.513493Z",
+    "rsi": 36.0,
+    "trend_score": 0.82,
+    "volatility_regime": "high",
+    "atr_percentile": 0.86,
+    "technical_alignment_score": 0.442
+  }
+]

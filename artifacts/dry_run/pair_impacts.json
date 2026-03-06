@@ -1,0 +1,38 @@
+[
+  {
+    "article_id": "148cc9604c9681aeabf592be065024ab742bceb75d1f08081bb5d5f8610b1bc3",
+    "pair": "USD/JPY",
+    "direction_hint": "neutral",
+    "pair_relevance_score": 0.95,
+    "event_type": "other",
+    "event_impact_score": 0.6100000000000001,
+    "explanation": "explicit pair mention, primary currency: USD"
+  },
+  {
+    "article_id": "91ac98e0fdb961b6631536e292af091e62e744699943726b53a97aba54627f2a",
+    "pair": "USD/CAD",
+    "direction_hint": "neutral",
+    "pair_relevance_score": 0.95,
+    "event_type": "other",
+    "event_impact_score": 0.6100000000000001,
+    "explanation": "explicit pair mention, primary currency: USD"
+  },
+  {
+    "article_id": "9fc2e9484156add520e72a2b25529cd5159efa2b69fd7c33614916ff7760f34e",
+    "pair": "GBP/USD",
+    "direction_hint": "neutral",
+    "pair_relevance_score": 0.95,
+    "event_type": "other",
+    "event_impact_score": 0.6100000000000001,
+    "explanation": "explicit pair mention, primary currency: USD"
+  },
+  {
+    "article_id": "69ed0416c253e5c1a26370042fe9cf21542f2d87a15c4282c30d8ab832663717",
+    "pair": "EUR/USD",
+    "direction_hint": "neutral",
+    "pair_relevance_score": 0.95,
+    "event_type": "other",
+    "event_impact_score": 0.6100000000000001,
+    "explanation": "explicit pair mention, primary currency: EUR"
+  }
+]

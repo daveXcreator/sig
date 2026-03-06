@@ -1,0 +1,21 @@
+﻿# Environment
+.env
+.venv/
+venv/
+
+# Python cache/artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

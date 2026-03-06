@@ -1,0 +1,154 @@
+[
+  {
+    "decision": "hold",
+    "confidence_raw": 0.774256,
+    "confidence_calibrated": 0.752315,
+    "signal": {
+      "signal_id": "sig_USDJPY_1772303269",
+      "pair": "USD/JPY",
+      "direction": "bullish",
+      "horizon": "intraday",
+      "confidence_raw": 0.7742558331886429,
+      "confidence_calibrated": 0.7523153665335515,
+      "thesis": "other signal with technical confirmation",
+      "invalidation": "Invalidate if 1h candle closes against direction with weak momentum.",
+      "reasons": [
+        "event=other",
+        "pair_relevance=0.95",
+        "technical_alignment=0.44",
+        "trend_score=0.82",
+        "impact_now=0.62",
+        "impact_latency=short_lag"
+      ],
+      "created_at": "2026-02-28T18:27:49.514449Z"
+    },
+    "reasons": [
+      "event=other",
+      "pair_relevance=0.95",
+      "technical_alignment=0.44",
+      "trend_score=0.82",
+      "impact_now=0.62",
+      "impact_latency=short_lag"
+    ],
+    "impact_timing": {
+      "impact_latency_class": "short_lag",
+      "impact_now_score": 0.6232,
+      "activation_window": "1-4h",
+      "expires_in_minutes": 360
+    }
+  },
+  {
+    "decision": "hold",
+    "confidence_raw": 0.830897,
+    "confidence_calibrated": 0.804426,
+    "signal": {
+      "signal_id": "sig_USDCAD_1772303269",
+      "pair": "USD/CAD",
+      "direction": "bullish",
+      "horizon": "intraday",
+      "confidence_raw": 0.8308973030185699,
+      "confidence_calibrated": 0.8044255187770843,
+      "thesis": "other signal with technical confirmation",
+      "invalidation": "Invalidate if 1h candle closes against direction with weak momentum.",
+      "reasons": [
+        "event=other",
+        "pair_relevance=0.95",
+        "technical_alignment=0.45",
+        "trend_score=0.81",
+        "impact_now=0.58",
+        "impact_latency=short_lag"
+      ],
+      "created_at": "2026-02-28T18:27:49.514846Z"
+    },
+    "reasons": [
+      "event=other",
+      "pair_relevance=0.95",
+      "technical_alignment=0.45",
+      "trend_score=0.81",
+      "impact_now=0.58",
+      "impact_latency=short_lag"
+    ],
+    "impact_timing": {
+      "impact_latency_class": "short_lag",
+      "impact_now_score": 0.5792,
+      "activation_window": "1-4h",
+      "expires_in_minutes": 360
+    }
+  },
+  {
+    "decision": "hold",
+    "confidence_raw": 0.751383,
+    "confidence_calibrated": 0.731272,
+    "signal": {
+      "signal_id": "sig_GBPUSD_1772303269",
+      "pair": "GBP/USD",
+      "direction": "bearish",
+      "horizon": "intraday",
+      "confidence_raw": 0.7513826359574116,
+      "confidence_calibrated": 0.7312720250808188,
+      "thesis": "other signal with technical confirmation",
+      "invalidation": "Invalidate if 1h candle closes against direction with weak momentum.",
+      "reasons": [
+        "event=other",
+        "pair_relevance=0.95",
+        "technical_alignment=0.45",
+        "trend_score=0.00",
+        "impact_now=0.58",
+        "impact_latency=short_lag"
+      ],
+      "created_at": "2026-02-28T18:27:49.515128Z"
+    },
+    "reasons": [
+      "event=other",
+      "pair_relevance=0.95",
+      "technical_alignment=0.45",
+      "trend_score=0.00",
+      "impact_now=0.58",
+      "impact_latency=short_lag"
+    ],
+    "impact_timing": {
+      "impact_latency_class": "short_lag",
+      "impact_now_score": 0.5792,
+      "activation_window": "1-4h",
+      "expires_in_minutes": 360
+    }
+  },
+  {
+    "decision": "hold",
+    "confidence_raw": 0.764228,
+    "confidence_calibrated": 0.74309,
+    "signal": {
+      "signal_id": "sig_EURUSD_1772303269",
+      "pair": "EUR/USD",
+      "direction": "bearish",
+      "horizon": "intraday",
+      "confidence_raw": 0.7642278310578562,
+      "confidence_calibrated": 0.7430896045732278,
+      "thesis": "other signal with technical confirmation",
+      "invalidation": "Invalidate if 1h candle closes against direction with weak momentum.",
+      "reasons": [
+        "event=other",
+        "pair_relevance=0.95",
+        "technical_alignment=0.32",
+        "trend_score=0.33",
+        "impact_now=0.58",
+        "impact_latency=short_lag"
+      ],
+      "created_at": "2026-02-28T18:27:49.515753Z"
+    },
+    "reasons": [
+      "event=other",
+      "pair_relevance=0.95",
+      "technical_alignment=0.32",
+      "trend_score=0.33",
+      "impact_now=0.58",
+      "impact_latency=short_lag"
+    ],
+    "impact_timing": {
+      "impact_latency_class": "short_lag",
+      "impact_now_score": 0.5792,
+      "activation_window": "1-4h",
+      "expires_in_minutes": 360
+    }
+  }
+]

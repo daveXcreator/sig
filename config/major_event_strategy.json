@@ -1,0 +1,101 @@
+{
+  "metadata": {
+    "name": "major_event_strategy",
+    "version": "1.0.0",
+    "description": "Major-event-first FX signal policy with deterministic gating and setup rules."
+  },
+  "event_universe": {
+    "primary": [
+      "rate_decision",
+      "inflation",
+      "employment",
+      "geopolitical"
+    ],
+    "secondary": [
+      "risk_sentiment"
+    ],
+    "blocked": [
+      "other"
+    ],
+    "secondary_rules": {
+      "event_impact_min": 0.75,
+      "pair_relevance_min": 0.7,
+      "impact_now_min": 0.65
+    }
+  },
+  "hard_gate": {
+    "event_impact_min": 0.75,
+    "pair_relevance_min": 0.7,
+    "impact_now_min": 0.55,
+    "allowed_latency_classes": [
+      "immediate",
+      "short_lag"
+    ],
+    "freshness_max_minutes": 240,
+    "source_reliability_min": 0.65
+  },
+  "volatility_buckets": {
+    "low_max_atr_percentile": 0.33,
+    "normal_max_atr_percentile": 0.66
+  },
+  "publish_thresholds": {
+    "low": {
+      "confidence_min": 0.7,
+      "technical_alignment_min": 0.58
+    },
+    "normal": {
+      "confidence_min": 0.73,
+      "technical_alignment_min": 0.62
+    },
+    "high": {
+      "confidence_min": 0.76,
+      "technical_alignment_min": 0.66
+    }
+  },
+  "trend_alignment": {
+    "bullish_min_trend_score": 0.52,
+    "bearish_max_trend_score": 0.48
+  },
+  "entry_and_risk": {
+    "lookback_bars_1h": 8,
+    "atr_period_1h": 14,
+    "pair_multipliers": {
+      "EUR/USD": 1.0,
+      "USD/CHF": 1.0,
+      "USD/JPY": 1.1,
+      "USD/CAD": 1.1,
+      "AUD/USD": 1.1,
+      "GBP/USD": 1.15,
+      "NZD/USD": 1.15
+    },
+    "buffer_factors": {
+      "low": 0.1,
+      "normal": 0.15,
+      "high": 0.2
+    },
+    "risk_offset_factors": {
+      "low": 0.35,
+      "normal": 0.45,
+      "high": 0.6
+    }
+  },
+  "validity_window_hours": {
+    "base": 6,
+    "low_vol_adjustment": 1,
+    "normal_vol_adjustment": 0,
+    "high_vol_adjustment": -1,
+    "min": 4,
+    "max": 8
+  },
+  "lifecycle": {
+    "states": [
+      "PENDING",
+      "TRIGGERED",
+      "CLOSED_PROFIT",
+      "INVALIDATED",
+      "EXPIRED"
+    ],
+    "profit_r_multiple_threshold": 0.5,
+    "loss_r_multiple_threshold": -1.0
+  }
+}

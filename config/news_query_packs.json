@@ -1,0 +1,17 @@
+{
+  "newsapi_query_groups": [
+    "forex OR currency OR fx market",
+    "federal reserve OR ecb OR boe OR boj OR central bank",
+    "inflation OR cpi OR ppi OR nonfarm payroll OR unemployment",
+    "geopolitical OR sanctions OR conflict OR crude oil OR treasury yields"
+  ],
+  "google_rss_queries": [
+    "forex currency central bank",
+    "fed ecb boe boj rates inflation",
+    "nonfarm payroll cpi forex dollar yen euro",
+    "geopolitical sanctions war oil markets"
+  ],
+  "newsapi_page_size": 10,
+  "newsapi_max_pages": 1,
+  "google_items_per_query": 5
+}

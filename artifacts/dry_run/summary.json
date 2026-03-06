@@ -1,0 +1,11 @@
+{
+  "run_mode": "dry_run",
+  "generated_at": "2026-02-28T18:27:49.559480Z",
+  "input_articles": 40,
+  "normalized_articles": 40,
+  "pair_impacts": 4,
+  "market_contexts": 4,
+  "decisions": 4,
+  "publishable_signals": 0,
+  "output_dir": "C:\\Users\\user\\Desktop\\signalyze_ai\\artifacts\\dry_run"
+}
