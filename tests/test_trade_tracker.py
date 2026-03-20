@@ -3,6 +3,7 @@ import shutil
 from types import SimpleNamespace
 import unittest
 import uuid
+from unittest.mock import patch
 
 from app.signal_setup import SignalExecutionPlan
 from app.trade_tracker import TradeTracker
@@ -23,6 +24,27 @@ class _PriceStub:
 
 
 class TradeTrackerTests(unittest.TestCase):
+    @patch("app.trade_tracker.ENABLE_TRADE_TRACKING", False)
+    def test_tracking_can_be_disabled(self):
+        tracker = TradeTracker(state_path=Path("artifacts") / "disabled_trade_state.json")
+        plan = SignalExecutionPlan(
+            signal_id="sig_disabled",
+            pair="USD/JPY",
+            direction="bullish",
+            entry_trigger_price=150.00,
+            risk_line_price=149.00,
+            valid_for_hours=6,
+            valid_until="2099-01-01T00:00:00Z",
+            when_to_enter="Enter on close above 150.00",
+            risk_line_text="Exit below 149.00",
+            volatility_bucket="normal",
+        )
+
+        self.assertEqual(0, tracker.register_new_plans({"sig_disabled": plan}))
+        self.assertEqual([], tracker.evaluate_open_trades(_PriceStub([150.05])))
+        self.assertEqual(0, tracker.count_active())
+
+    @patch("app.trade_tracker.ENABLE_TRADE_TRACKING", True)
     def test_register_and_close_profit_trade(self):
         out_dir = Path("artifacts") / f"test_trade_tracker_{uuid.uuid4().hex}"
         out_dir.mkdir(parents=True, exist_ok=True)

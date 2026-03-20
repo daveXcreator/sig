@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 
-from app.config import TRADE_STATE_PATH
+from app.config import ENABLE_TRADE_TRACKING, TRADE_STATE_PATH
 from app.signal_setup import AlphaVantageIntradayProvider, SignalExecutionPlan
 
 STATE_PATH = Path(TRADE_STATE_PATH)
@@ -85,6 +85,8 @@ class TradeTracker:
         self.state_path = state_path
 
     def _load(self) -> dict[str, TrackedTrade]:
+        if not ENABLE_TRADE_TRACKING:
+            return {}
         if not self.state_path.exists():
             return {}
         try:
@@ -117,11 +119,15 @@ class TradeTracker:
         return trades
 
     def _save(self, trades: dict[str, TrackedTrade]) -> None:
+        if not ENABLE_TRADE_TRACKING:
+            return
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         payload = {"trades": [asdict(trade) for trade in trades.values()]}
         self.state_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     def register_new_plans(self, plans: dict[str, SignalExecutionPlan]) -> int:
+        if not ENABLE_TRADE_TRACKING:
+            return 0
         trades = self._load()
         added = 0
         for signal_id, plan in plans.items():
@@ -143,6 +149,8 @@ class TradeTracker:
         return added
 
     def evaluate_open_trades(self, intraday_provider: AlphaVantageIntradayProvider) -> list[TradeUpdate]:
+        if not ENABLE_TRADE_TRACKING:
+            return []
         trades = self._load()
         now = _now_utc()
         updates: list[TradeUpdate] = []
@@ -224,5 +232,7 @@ class TradeTracker:
         return updates
 
     def count_active(self) -> int:
+        if not ENABLE_TRADE_TRACKING:
+            return 0
         trades = self._load()
         return sum(1 for trade in trades.values() if trade.state in ACTIVE_STATES)

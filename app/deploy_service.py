@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import json
-from pathlib import Path
 import threading
 from typing import Any, Callable
 from urllib.parse import parse_qs, urlparse
@@ -13,10 +12,10 @@ from app.config import (
     BACKGROUND_LOOP_INTERVAL_MINUTES,
     ENABLE_BACKGROUND_LOOP,
     OPERATOR_API_KEY,
-    RUN_HISTORY_PATH,
 )
 from app.confidence_calibration import run_calibration_job
 from app.launch_report import build_production_day_report
+from app.run_history_store import load_recent_run_history, run_history_backend_label
 from app.unified_pipeline import run_live_v2
 from app.utils import log
 
@@ -54,6 +53,7 @@ def _coerce_bool(value: Any, default: bool = True) -> bool:
 _state_lock = threading.Lock()
 _action_lock = threading.Lock()
 _stop_event = threading.Event()
+_recent_runs: list[dict[str, Any]] = []
 
 _state: dict[str, Any] = {
     "started_at": _utc_now_iso(),
@@ -111,6 +111,7 @@ def _run_live_once(trigger: str, publish_enabled: bool = True) -> dict[str, Any]
 
     status = str(summary.get("status", "unknown"))
     runs = _snapshot()
+    _remember_run(summary)
     _set_state(
         run_in_progress=False,
         runs_total=int(runs.get("runs_total", 0)) + 1,
@@ -121,6 +122,11 @@ def _run_live_once(trigger: str, publish_enabled: bool = True) -> dict[str, Any]
         last_run_finished_at=_utc_now_iso(),
     )
     return summary
+
+
+def _remember_run(summary: dict[str, Any]) -> None:
+    _recent_runs.insert(0, json.loads(json.dumps(summary, default=str)))
+    del _recent_runs[300:]
 
 
 def _start_action(name: str, fn: Callable[..., Any], **kwargs: Any) -> tuple[bool, dict[str, Any]]:
@@ -214,27 +220,10 @@ def _safe_float(value: Any, default: float = 0.0) -> float:
 
 
 def _load_recent_runs(limit: int = 200) -> list[dict[str, Any]]:
-    path = Path(RUN_HISTORY_PATH)
-    if not path.exists():
-        return []
-    try:
-        lines = path.read_text(encoding="utf-8").splitlines()
-    except OSError:
-        return []
-
-    selected = lines[-max(1, int(limit)) :]
-    runs: list[dict[str, Any]] = []
-    for line in reversed(selected):
-        row = line.strip()
-        if not row:
-            continue
-        try:
-            parsed = json.loads(row)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(parsed, dict):
-            runs.append(parsed)
-    return runs
+    runs = load_recent_run_history(limit=limit)
+    if runs:
+        return runs
+    return _recent_runs[: max(1, int(limit))]
 
 
 def _run_metrics(runs: list[dict[str, Any]]) -> dict[str, Any]:
@@ -248,6 +237,9 @@ def _run_metrics(runs: list[dict[str, Any]]) -> dict[str, Any]:
             "policy_published_total": 0,
             "avg_total_latency_ms": 0.0,
             "hard_gate_failures_total": 0,
+            "hard_gate_failures_breakdown": {},
+            "signal_drops_total": 0,
+            "signal_drop_stage_breakdown": {},
             "last_finished_at": None,
         }
     ok_runs = sum(1 for run in runs if str(run.get("status")) == "ok")
@@ -262,6 +254,27 @@ def _run_metrics(runs: list[dict[str, Any]]) -> dict[str, Any]:
         sum(_safe_float(run.get("total_latency_ms"), 0.0) for run in runs) / len(runs)
     )
     hard_gate_failures_total = sum(_safe_int(run.get("policy_failed_hard_gate"), 0) for run in runs)
+    hard_gate_failures_breakdown: dict[str, int] = {}
+    signal_drops_total = sum(_safe_int(run.get("signal_drop_total"), 0) for run in runs)
+    signal_drop_stage_breakdown: dict[str, int] = {}
+    for run in runs:
+        raw = run.get("policy_failed_hard_gate_breakdown")
+        if not isinstance(raw, dict):
+            raw = {}
+        for reason, count in raw.items():
+            if isinstance(reason, str):
+                hard_gate_failures_breakdown[reason] = (
+                    hard_gate_failures_breakdown.get(reason, 0) + _safe_int(count, 0)
+                )
+
+        drop_counts = run.get("signal_drop_counts")
+        if not isinstance(drop_counts, dict):
+            drop_counts = {}
+        for stage, count in drop_counts.items():
+            if isinstance(stage, str):
+                signal_drop_stage_breakdown[stage] = (
+                    signal_drop_stage_breakdown.get(stage, 0) + _safe_int(count, 0)
+                )
     return {
         "runs": len(runs),
         "ok_runs": ok_runs,
@@ -271,8 +284,49 @@ def _run_metrics(runs: list[dict[str, Any]]) -> dict[str, Any]:
         "policy_published_total": policy_published_total,
         "avg_total_latency_ms": round(avg_total_latency_ms, 2),
         "hard_gate_failures_total": hard_gate_failures_total,
+        "hard_gate_failures_breakdown": dict(
+            sorted(
+                hard_gate_failures_breakdown.items(),
+                key=lambda item: (-item[1], item[0]),
+            )
+        ),
+        "signal_drops_total": signal_drops_total,
+        "signal_drop_stage_breakdown": dict(
+            sorted(
+                signal_drop_stage_breakdown.items(),
+                key=lambda item: (-item[1], item[0]),
+            )
+        ),
         "last_finished_at": runs[0].get("finished_at"),
     }
+
+
+def _collect_recent_signal_drops(
+    runs: list[dict[str, Any]], limit: int = 120
+) -> list[dict[str, Any]]:
+    drops: list[dict[str, Any]] = []
+    for run in runs:
+        run_id = run.get("run_id")
+        finished_at = run.get("finished_at")
+        details = run.get("signal_drop_details")
+        if not isinstance(details, list):
+            continue
+        for item in details:
+            if not isinstance(item, dict):
+                continue
+            drops.append(
+                {
+                    "finished_at": finished_at,
+                    "run_id": run_id,
+                    "stage": item.get("stage"),
+                    "reason": item.get("reason"),
+                    "pair": item.get("pair"),
+                    "signal_id": item.get("signal_id"),
+                }
+            )
+            if len(drops) >= limit:
+                return drops
+    return drops
 
 
 def _fmt_latency_ms(value: Any) -> str:
@@ -295,6 +349,9 @@ def _html_dashboard() -> str:
     metrics = _run_metrics(runs)
     last_run = snapshot.get("last_run_summary") or {}
     publish_stats = last_run.get("publish_stats", {}) if isinstance(last_run, dict) else {}
+    hard_gate_breakdown = metrics.get("hard_gate_failures_breakdown", {})
+    signal_drop_breakdown = metrics.get("signal_drop_stage_breakdown", {})
+    recent_drops = _collect_recent_signal_drops(runs, limit=120)
     rows_html = []
     for run in runs[:100]:
         run_id = run.get("run_id", "")
@@ -311,6 +368,53 @@ def _html_dashboard() -> str:
             "</tr>"
         )
     run_rows = "\n".join(rows_html) if rows_html else "<tr><td colspan='8'>No runs yet</td></tr>"
+    hard_gate_rows = []
+    if isinstance(hard_gate_breakdown, dict):
+        for reason, count in hard_gate_breakdown.items():
+            hard_gate_rows.append(
+                "<tr>"
+                f"<td>{reason}</td>"
+                f"<td>{_fmt_int(count)}</td>"
+                "</tr>"
+            )
+    hard_gate_breakdown_rows = (
+        "\n".join(hard_gate_rows)
+        if hard_gate_rows
+        else "<tr><td colspan='2'>No hard-gate failures in loaded runs</td></tr>"
+    )
+    drop_breakdown_rows = []
+    if isinstance(signal_drop_breakdown, dict):
+        for stage, count in signal_drop_breakdown.items():
+            drop_breakdown_rows.append(
+                "<tr>"
+                f"<td>{stage}</td>"
+                f"<td>{_fmt_int(count)}</td>"
+                "</tr>"
+            )
+    signal_drop_breakdown_rows = (
+        "\n".join(drop_breakdown_rows)
+        if drop_breakdown_rows
+        else "<tr><td colspan='2'>No dropped signals in loaded runs</td></tr>"
+    )
+    drop_rows = []
+    for item in recent_drops:
+        run_id = item.get("run_id", "")
+        signal_id = item.get("signal_id", "")
+        drop_rows.append(
+            "<tr>"
+            f"<td>{item.get('finished_at', '-')}</td>"
+            f"<td>{run_id[-8:] if isinstance(run_id, str) else '-'}</td>"
+            f"<td>{item.get('stage', '-')}</td>"
+            f"<td>{item.get('reason', '-')}</td>"
+            f"<td>{item.get('pair', '-')}</td>"
+            f"<td>{signal_id if isinstance(signal_id, str) else '-'}</td>"
+            "</tr>"
+        )
+    recent_drop_rows = (
+        "\n".join(drop_rows)
+        if drop_rows
+        else "<tr><td colspan='6'>No dropped signals in loaded runs</td></tr>"
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -358,9 +462,56 @@ def _html_dashboard() -> str:
       <div class="metric"><div class="label">Publishable Signals</div><div class="value">{metrics.get("publishable_signals_total")}</div></div>
       <div class="metric"><div class="label">Policy Published</div><div class="value">{metrics.get("policy_published_total")}</div></div>
       <div class="metric"><div class="label">Hard Gate Failures</div><div class="value">{metrics.get("hard_gate_failures_total")}</div></div>
+      <div class="metric"><div class="label">Signal Drops</div><div class="value">{metrics.get("signal_drops_total")}</div></div>
       <div class="metric"><div class="label">Avg Latency (ms)</div><div class="value">{metrics.get("avg_total_latency_ms")}</div></div>
       <div class="metric"><div class="label">Last Finished</div><div class="value" style="font-size:12px">{metrics.get("last_finished_at") or "-"}</div></div>
     </div>
+  </div>
+  <div class="card">
+    <h2>Hard Gate Reason Breakdown</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Reason</th>
+          <th>Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        {hard_gate_breakdown_rows}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Signal Drop Stage Breakdown</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Stage</th>
+          <th>Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        {signal_drop_breakdown_rows}
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <h2>Dropped Signals (latest 120)</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Finished (UTC)</th>
+          <th>Run</th>
+          <th>Stage</th>
+          <th>Reason</th>
+          <th>Pair</th>
+          <th>Signal ID</th>
+        </tr>
+      </thead>
+      <tbody>
+        {recent_drop_rows}
+      </tbody>
+    </table>
   </div>
   <div class="card">
     <h2>Run History (latest 100)</h2>
@@ -440,7 +591,7 @@ class OperatorHandler(BaseHTTPRequestHandler):
                     "status": "ok",
                     "count": len(runs),
                     "limit": limit,
-                    "path": RUN_HISTORY_PATH,
+                    "path": run_history_backend_label(),
                     "runs": runs,
                 },
             )

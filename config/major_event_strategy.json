@@ -31,7 +31,7 @@
       "immediate",
       "short_lag"
     ],
-    "freshness_max_minutes": 240,
+    "freshness_max_minutes": 720,
     "source_reliability_min": 0.65
   },
   "volatility_buckets": {

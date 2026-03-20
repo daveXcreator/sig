@@ -1,0 +1,62 @@
+name: Live Runner
+
+on:
+  schedule:
+    - cron: "17 * * * 1-5"
+  workflow_dispatch:
+
+concurrency:
+  group: live-runner
+  cancel-in-progress: false
+
+jobs:
+  run-live-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.OPENAI_MODEL }}
+      NEWS_API_KEY: ${{ secrets.NEWS_API_KEY }}
+      ALPHA_VANTAGE_KEY: ${{ secrets.ALPHA_VANTAGE_KEY }}
+      TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+      TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+      FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+      PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+      HF_API_TOKEN: ${{ secrets.HF_API_TOKEN }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      OPERATOR_API_KEY: ${{ secrets.OPERATOR_API_KEY }}
+      FREE_TIER_MODE: ${{ vars.FREE_TIER_MODE }}
+      RUN_HISTORY_REMOTE_BACKEND: ${{ vars.RUN_HISTORY_REMOTE_BACKEND }}
+      RUN_HISTORY_SUPABASE_TABLE: ${{ vars.RUN_HISTORY_SUPABASE_TABLE }}
+      ENABLE_LOCAL_RUN_HISTORY: ${{ vars.ENABLE_LOCAL_RUN_HISTORY }}
+      ENABLE_TRADE_TRACKING: ${{ vars.ENABLE_TRADE_TRACKING }}
+      ENABLE_FILE_ROLLBACK_SWITCH: ${{ vars.ENABLE_FILE_ROLLBACK_SWITCH }}
+      ROLLBACK_SWITCH_ACTIVE: ${{ vars.ROLLBACK_SWITCH_ACTIVE }}
+      ENABLE_PUBLIC_POSTING: ${{ vars.ENABLE_PUBLIC_POSTING }}
+      ENABLE_ECONOMIC_CALENDAR: ${{ vars.ENABLE_ECONOMIC_CALENDAR }}
+      ENABLE_CONFIDENCE_CALIBRATION: ${{ vars.ENABLE_CONFIDENCE_CALIBRATION }}
+      ENABLE_BACKGROUND_LOOP: "false"
+      NEWS_QUERY_CONFIG_PATH: ${{ vars.NEWS_QUERY_CONFIG_PATH }}
+      STRATEGY_CONFIG_PATH: ${{ vars.STRATEGY_CONFIG_PATH }}
+      ENABLE_TELEGRAM_IMAGES: ${{ vars.ENABLE_TELEGRAM_IMAGES }}
+      TELEGRAM_IMAGE_MODE: ${{ vars.TELEGRAM_IMAGE_MODE }}
+      ENABLE_CHART_IMAGES: ${{ vars.ENABLE_CHART_IMAGES }}
+      MAX_PUBLISHABLE_SIGNALS_PER_RUN: ${{ vars.MAX_PUBLISHABLE_SIGNALS_PER_RUN }}
+      MAX_EXTRACTION_ARTICLES: ${{ vars.MAX_EXTRACTION_ARTICLES }}
+      REQUIRE_MAJOR_EVENT_FILTER: ${{ vars.REQUIRE_MAJOR_EVENT_FILTER }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run live pipeline
+        run: python main.py

@@ -17,6 +17,10 @@ Ingestion now uses multi-query source coverage (policy, macro, labor/inflation, 
 ## V2 Blueprint
 - Detailed build spec: [docs/V2_BLUEPRINT.md](docs/V2_BLUEPRINT.md)
 
+## Signal Gate Guide
+- Plain-language gate and threshold walkthrough: [docs/SIGNAL_GATES_EXPLAINED.md](docs/SIGNAL_GATES_EXPLAINED.md)
+- Free-tier runtime mode: [docs/FREE_TIER_MODE.md](docs/FREE_TIER_MODE.md)
+
 ## Execution Checklist
 
 ### Product and Market
@@ -63,6 +67,18 @@ Ingestion now uses multi-query source coverage (policy, macro, labor/inflation, 
 1. Create and activate a virtual environment.
 2. Install dependencies from `requirements.txt`.
 3. Populate `.env` with required keys (`OPENAI_API_KEY` is required for live V2). Add `FMP_API_KEY` to enable calendar-based surprise scoring. Set `ENABLE_ECONOMIC_CALENDAR=false` to skip calendar integration.
+   Free-tier mode:
+   - `FREE_TIER_MODE=true`
+   - `ENABLE_LOCAL_RUN_HISTORY=false`
+   - `ENABLE_TRADE_TRACKING=false`
+   - `ENABLE_FILE_ROLLBACK_SWITCH=false`
+   - `ENABLE_BACKGROUND_LOOP=false`
+   - `ROLLBACK_SWITCH_ACTIVE=false`
+   Optional external run history with Supabase:
+   - `RUN_HISTORY_REMOTE_BACKEND=supabase`
+   - `SUPABASE_URL=...`
+   - `SUPABASE_SERVICE_ROLE_KEY=...`
+   - `RUN_HISTORY_SUPABASE_TABLE=signalyze_run_history`
    Day 14 launch guardrails:
    - `ENABLE_PUBLIC_POSTING=true` global publish switch.
    - `ROLLBACK_SWITCH_FILE=artifacts/live/ROLLBACK` file-based emergency rollback switch.
@@ -103,7 +119,7 @@ This repo now includes `render.yaml` for one-service deployment:
   - `GET /status`
   - `GET /runs?limit=200` (per-run history from JSONL)
   - `GET /metrics?limit=200` (aggregated run metrics)
-  - operator dashboard at `/` (summary + latest 100 runs)
+  - operator dashboard at `/` (summary + latest 100 runs + dropped signal table)
 - Runs background live cycles on schedule (`BACKGROUND_LOOP_INTERVAL_MINUTES`).
 - Uses persistent disk at `/var/data` for:
   - run history

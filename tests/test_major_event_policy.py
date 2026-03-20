@@ -155,6 +155,9 @@ class MajorEventPolicyTests(unittest.TestCase):
 
         self.assertEqual([], result.signals)
         self.assertEqual(1, result.stats["failed_event_universe"])
+        self.assertEqual(1, len(result.drop_details))
+        self.assertEqual("policy", result.drop_details[0]["stage"])
+        self.assertEqual("event_universe", result.drop_details[0]["reason"])
 
     def test_select_publishable_signals_tracks_hard_gate_breakdown(self):
         strategy = _strategy_stub()
@@ -217,6 +220,9 @@ class MajorEventPolicyTests(unittest.TestCase):
         self.assertEqual([], result.signals)
         self.assertEqual(1, result.stats["failed_hard_gate"])
         self.assertEqual(1, result.stats["failed_hard_gate_breakdown"].get("freshness_stale", 0))
+        self.assertEqual(1, len(result.drop_details))
+        self.assertEqual("policy", result.drop_details[0]["stage"])
+        self.assertEqual("hard_gate_freshness_stale", result.drop_details[0]["reason"])
 
 
 if __name__ == "__main__":

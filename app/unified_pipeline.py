@@ -1,20 +1,20 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
-import json
 from pathlib import Path
 import time
 from typing import Any
 
 from app.config import (
     ENABLE_ECONOMIC_CALENDAR,
+    ENABLE_FILE_ROLLBACK_SWITCH,
     ENABLE_PUBLIC_POSTING,
     MAX_EXTRACTION_ARTICLES,
     MAX_PUBLISHABLE_SIGNALS_PER_RUN,
     OPENAI_API_KEY,
     REQUIRE_MAJOR_EVENT_FILTER,
     ROLLBACK_SWITCH_FILE,
-    RUN_HISTORY_PATH,
+    ROLLBACK_SWITCH_ACTIVE,
 )
 from app.economic_calendar import FmpEconomicCalendarClient, pair_surprise_strength
 from app.dry_run_pipeline import normalize_articles
@@ -25,8 +25,9 @@ from app.major_event_policy import select_publishable_signals_by_strategy
 from app.news_fetcher import fetch_forex_news
 from app.pair_detector import detect_currency_pairs
 from app.publisher import PublisherConfig, SignalPublisher
+from app.run_history_store import append_run_history
 from app.signal_setup import AlphaVantageIntradayProvider, build_execution_plans
-from app.schemas import PairImpact
+from app.schemas import PairImpact, SignalCandidate
 from app.sentiment_analyzer import analyze_sentiment
 from app.signal_engine import WeightedSignalEngine
 from app.strategy_config import StrategyConfigError, load_major_event_strategy
@@ -101,21 +102,15 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def _append_run_history(summary: dict[str, Any]) -> None:
-    path = Path(RUN_HISTORY_PATH)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    payload = json.dumps(summary, sort_keys=True, default=str)
-    with path.open("a", encoding="utf-8") as handle:
-        handle.write(payload + "\n")
-
-
 def _resolve_publish_guardrail(publish_enabled: bool) -> tuple[bool, str | None, bool]:
     if not publish_enabled:
         return False, "publish_disabled_runtime", False
     if not ENABLE_PUBLIC_POSTING:
         return False, "publish_disabled_env", False
+    if ROLLBACK_SWITCH_ACTIVE:
+        return False, "rollback_switch_active_env", True
     rollback_switch = Path(ROLLBACK_SWITCH_FILE)
-    if rollback_switch.exists():
+    if ENABLE_FILE_ROLLBACK_SWITCH and rollback_switch.exists():
         return False, "rollback_switch_active", True
     return True, None, False
 
@@ -208,6 +203,16 @@ def _best_pair_impacts_by_pair(impacts: list[PairImpact]) -> list[PairImpact]:
         if candidate_score > existing_score:
             best[impact.pair] = impact
     return list(best.values())
+
+
+def _drop_counts_by_stage(details: list[dict[str, Any]]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for item in details:
+        stage = str(item.get("stage", "")).strip()
+        if not stage:
+            continue
+        counts[stage] = counts.get(stage, 0) + 1
+    return counts
 
 
 def _merge_openai_with_deterministic(
@@ -310,6 +315,7 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
         "major_event_decisions": 0,
         "source_counts": {},
     }
+    signal_drop_details: list[dict[str, Any]] = []
 
     def complete_stage(stage: str, stage_started_at: float, result: str = "ok", **fields: Any) -> None:
         latency = (time.perf_counter() - stage_started_at) * 1000
@@ -343,8 +349,8 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
             major_event_impacts=coverage_metrics.get("major_event_impacts", 0),
         )
         try:
-            _append_run_history(summary)
-        except OSError as err:
+            append_run_history(summary)
+        except Exception as err:
             log(f"Run history write failed: {err}")
         log(f"Live V2 summary: {summary}")
         return summary
@@ -533,6 +539,7 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
         signal = getattr(decision, "signal", None)
         if signal is None:
             continue
+        decision_result = str(getattr(decision, "decision", "unknown"))
         event_started = time.perf_counter()
         log_event(
             stage="decision",
@@ -540,10 +547,20 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
             run_id=run_id,
             signal_id=signal.signal_id,
             latency_ms=(time.perf_counter() - event_started) * 1000,
-            result=getattr(decision, "decision", "unknown"),
+            result=decision_result,
             pair=signal.pair,
             direction=signal.direction,
         )
+        if decision_result != "publish":
+            signal_drop_details.append(
+                {
+                    "stage": "signal_decision",
+                    "reason": f"engine_{decision_result}",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                    "direction": signal.direction,
+                }
+            )
 
     strategy_started = time.perf_counter()
     try:
@@ -568,6 +585,7 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
         strategy=strategy,
     )
     publishable = policy_result.signals
+    signal_drop_details.extend(policy_result.drop_details)
     run_metrics["signals_policy_selected"] = len(publishable)
     complete_stage(
         "policy",
@@ -606,6 +624,16 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
             result="planned" if has_plan else "dropped",
             pair=signal.pair,
         )
+        if not has_plan:
+            signal_drop_details.append(
+                {
+                    "stage": "execution_plan",
+                    "reason": "missing_execution_plan",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                    "direction": signal.direction,
+                }
+            )
 
     publish_candidates = [signal for signal in publishable if signal.signal_id in execution_plans]
     run_metrics["publish_candidates"] = len(publish_candidates)
@@ -617,16 +645,29 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
     }
     publishable = publish_candidates
     cap = int(MAX_PUBLISHABLE_SIGNALS_PER_RUN)
+    dropped_by_cap: list[SignalCandidate] = []
     if cap > 0 and len(publishable) > cap:
-        publishable = sorted(
+        ranked_candidates = sorted(
             publishable,
             key=lambda signal: (
                 decision_confidence.get(signal.signal_id, signal.confidence_calibrated),
                 signal.confidence_calibrated,
             ),
             reverse=True,
-        )[:cap]
+        )
+        publishable = ranked_candidates[:cap]
+        dropped_by_cap = ranked_candidates[cap:]
     run_metrics["publish_capped_dropped"] = len(publish_candidates) - len(publishable)
+    for signal in dropped_by_cap:
+        signal_drop_details.append(
+            {
+                "stage": "publish_cap",
+                "reason": "max_publishable_signals_per_run",
+                "signal_id": signal.signal_id,
+                "pair": signal.pair,
+                "direction": signal.direction,
+            }
+        )
 
     tracking_started = time.perf_counter()
     trade_tracker = TradeTracker()
@@ -681,6 +722,16 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
     else:
         run_metrics["publishing_skipped"] = 1
         log(f"Publishing skipped by guardrail ({publish_guardrail_reason}).")
+        for signal in publishable:
+            signal_drop_details.append(
+                {
+                    "stage": "publishing_guardrail",
+                    "reason": publish_guardrail_reason or "guardrail",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                    "direction": signal.direction,
+                }
+            )
 
     complete_stage(
         "publishing",
@@ -736,5 +787,8 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
         "major_event_impacts": coverage_metrics["major_event_impacts"],
         "major_event_decisions": coverage_metrics["major_event_decisions"],
         "source_counts": coverage_metrics.get("source_counts", {}),
+        "signal_drop_total": len(signal_drop_details),
+        "signal_drop_counts": _drop_counts_by_stage(signal_drop_details),
+        "signal_drop_details": signal_drop_details,
     }
     return finalize(summary)

@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from app.config import RUN_HISTORY_PATH
+from app.run_history_store import load_run_history_for_day
 from app.utils import log
 
 
@@ -64,8 +65,11 @@ def build_production_day_report(
     output_dir: str = "artifacts/live/reports",
 ) -> dict[str, Any]:
     target_day = day_utc or datetime.now(timezone.utc).date().isoformat()
-    history = _load_history(Path(history_path))
-    filtered = [row for row in history if _utc_date(row.get("finished_at")) == target_day]
+    if history_path == RUN_HISTORY_PATH:
+        filtered = load_run_history_for_day(target_day)
+    else:
+        history = _load_history(Path(history_path))
+        filtered = [row for row in history if _utc_date(row.get("finished_at")) == target_day]
 
     status_counter = Counter(str(row.get("status", "unknown")) for row in filtered)
     reason_counter = Counter(str(row.get("reason")) for row in filtered if row.get("reason"))

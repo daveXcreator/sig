@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
@@ -12,6 +12,7 @@ from app.strategy_config import MajorEventStrategyConfig
 class PolicySelectionResult:
     signals: list[SignalCandidate]
     stats: dict[str, Any]
+    drop_details: list[dict[str, Any]] = field(default_factory=list)
 
 
 def _parse_iso8601_utc(value: str) -> datetime | None:
@@ -160,6 +161,7 @@ def select_publishable_signals_by_strategy(
         "failed_hard_gate_breakdown": {},
     }
     selected: list[SignalCandidate] = []
+    drop_details: list[dict[str, Any]] = []
 
     for decision in decisions:
         if getattr(decision, "decision", "") != "publish":
@@ -174,11 +176,27 @@ def select_publishable_signals_by_strategy(
         context = context_by_pair.get(signal.pair)
         if pair_impact is None or context is None:
             stats["failed_missing_context"] += 1
+            drop_details.append(
+                {
+                    "stage": "policy",
+                    "reason": "missing_context",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                }
+            )
             continue
 
         article = article_by_id.get(pair_impact.article_id)
         if article is None:
             stats["failed_missing_context"] += 1
+            drop_details.append(
+                {
+                    "stage": "policy",
+                    "reason": "missing_context",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                }
+            )
             continue
 
         impact_timing = getattr(decision, "impact_timing", None)
@@ -196,9 +214,27 @@ def select_publishable_signals_by_strategy(
         allowed, secondary = _is_event_allowed(pair_impact, strategy)
         if not allowed:
             stats["failed_event_universe"] += 1
+            drop_details.append(
+                {
+                    "stage": "policy",
+                    "reason": "event_universe",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                    "event_type": pair_impact.event_type,
+                }
+            )
             continue
         if secondary and not _passes_secondary_rules(pair_impact, impact_now_score, strategy):
             stats["failed_secondary_rules"] += 1
+            drop_details.append(
+                {
+                    "stage": "policy",
+                    "reason": "secondary_rules",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                    "event_type": pair_impact.event_type,
+                }
+            )
             continue
 
         hard_gate_passed, hard_gate_reason = _passes_hard_gate(
@@ -213,19 +249,46 @@ def select_publishable_signals_by_strategy(
             if hard_gate_reason:
                 breakdown = stats.setdefault("failed_hard_gate_breakdown", {})
                 breakdown[hard_gate_reason] = int(breakdown.get(hard_gate_reason, 0)) + 1
+            drop_details.append(
+                {
+                    "stage": "policy",
+                    "reason": f"hard_gate_{hard_gate_reason or 'unknown'}",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                    "event_type": pair_impact.event_type,
+                }
+            )
             continue
 
         bucket = _volatility_bucket(context.atr_percentile, strategy)
         confidence = float(getattr(decision, "confidence_calibrated", signal.confidence_calibrated))
         if not _passes_bucket_thresholds(confidence=confidence, context=context, bucket=bucket, strategy=strategy):
             stats["failed_thresholds"] += 1
+            drop_details.append(
+                {
+                    "stage": "policy",
+                    "reason": "thresholds",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                    "event_type": pair_impact.event_type,
+                }
+            )
             continue
 
         if not _passes_trend_alignment(direction=signal.direction, context=context, strategy=strategy):
             stats["failed_trend_alignment"] += 1
+            drop_details.append(
+                {
+                    "stage": "policy",
+                    "reason": "trend_alignment",
+                    "signal_id": signal.signal_id,
+                    "pair": signal.pair,
+                    "event_type": pair_impact.event_type,
+                }
+            )
             continue
 
         selected.append(signal)
         stats["published"] += 1
 
-    return PolicySelectionResult(signals=selected, stats=stats)
+    return PolicySelectionResult(signals=selected, stats=stats, drop_details=drop_details)
