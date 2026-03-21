@@ -24,6 +24,22 @@ def _utc_now_iso() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
+def _format_utc_display(value: Any) -> str:
+    if not value:
+        return "-"
+    if isinstance(value, datetime):
+        dt = value.astimezone(timezone.utc)
+    else:
+        text = str(value).strip()
+        if not text:
+            return "-"
+        try:
+            dt = datetime.fromisoformat(text.replace("Z", "+00:00")).astimezone(timezone.utc)
+        except ValueError:
+            return text
+    return dt.strftime("%a %d %b %Y, %H:%M UTC")
+
+
 def _env_port(default: int = 10000) -> int:
     import os
 
@@ -349,6 +365,9 @@ def _html_dashboard() -> str:
     metrics = _run_metrics(runs)
     last_run = snapshot.get("last_run_summary") or {}
     publish_stats = last_run.get("publish_stats", {}) if isinstance(last_run, dict) else {}
+    last_run_started = _format_utc_display(snapshot.get("last_run_started_at"))
+    last_run_finished = _format_utc_display(snapshot.get("last_run_finished_at"))
+    last_finished_metric = _format_utc_display(metrics.get("last_finished_at"))
     hard_gate_breakdown = metrics.get("hard_gate_failures_breakdown", {})
     signal_drop_breakdown = metrics.get("signal_drop_stage_breakdown", {})
     recent_drops = _collect_recent_signal_drops(runs, limit=120)
@@ -357,7 +376,7 @@ def _html_dashboard() -> str:
         run_id = run.get("run_id", "")
         rows_html.append(
             "<tr>"
-            f"<td>{run.get('finished_at', '-')}</td>"
+            f"<td>{_format_utc_display(run.get('finished_at'))}</td>"
             f"<td>{run.get('status', '-')}</td>"
             f"<td>{run_id[-8:] if isinstance(run_id, str) else '-'}</td>"
             f"<td>{_fmt_int(run.get('articles'))}</td>"
@@ -402,7 +421,7 @@ def _html_dashboard() -> str:
         signal_id = item.get("signal_id", "")
         drop_rows.append(
             "<tr>"
-            f"<td>{item.get('finished_at', '-')}</td>"
+            f"<td>{_format_utc_display(item.get('finished_at'))}</td>"
             f"<td>{run_id[-8:] if isinstance(run_id, str) else '-'}</td>"
             f"<td>{item.get('stage', '-')}</td>"
             f"<td>{item.get('reason', '-')}</td>"
@@ -448,8 +467,8 @@ def _html_dashboard() -> str:
   </div>
   <div class="card">
     <strong>Last Run Trigger:</strong> {snapshot.get("last_run_trigger")}<br>
-    <strong>Last Run Started:</strong> {snapshot.get("last_run_started_at")}<br>
-    <strong>Last Run Finished:</strong> {snapshot.get("last_run_finished_at")}<br>
+    <strong>Last Run Started:</strong> {last_run_started}<br>
+    <strong>Last Run Finished:</strong> {last_run_finished}<br>
     <strong>Published:</strong> telegram={publish_stats.get("telegram", 0)} results={publish_stats.get("results", 0)}<br>
     <strong>Guardrail:</strong> {last_run.get("publish_guardrail_reason")}<br>
   </div>
@@ -464,7 +483,7 @@ def _html_dashboard() -> str:
       <div class="metric"><div class="label">Hard Gate Failures</div><div class="value">{metrics.get("hard_gate_failures_total")}</div></div>
       <div class="metric"><div class="label">Signal Drops</div><div class="value">{metrics.get("signal_drops_total")}</div></div>
       <div class="metric"><div class="label">Avg Latency (ms)</div><div class="value">{metrics.get("avg_total_latency_ms")}</div></div>
-      <div class="metric"><div class="label">Last Finished</div><div class="value" style="font-size:12px">{metrics.get("last_finished_at") or "-"}</div></div>
+      <div class="metric"><div class="label">Last Finished</div><div class="value" style="font-size:12px">{last_finished_metric}</div></div>
     </div>
   </div>
   <div class="card">
@@ -500,7 +519,7 @@ def _html_dashboard() -> str:
     <table>
       <thead>
         <tr>
-          <th>Finished (UTC)</th>
+          <th>Finished</th>
           <th>Run</th>
           <th>Stage</th>
           <th>Reason</th>
@@ -518,7 +537,7 @@ def _html_dashboard() -> str:
     <table>
       <thead>
         <tr>
-          <th>Finished (UTC)</th>
+          <th>Finished</th>
           <th>Status</th>
           <th>Run</th>
           <th>Articles</th>
