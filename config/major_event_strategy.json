@@ -5,18 +5,9 @@
     "description": "Major-event-first FX signal policy with deterministic gating and setup rules."
   },
   "event_universe": {
-    "primary": [
-      "rate_decision",
-      "inflation",
-      "employment",
-      "geopolitical"
-    ],
-    "secondary": [
-      "risk_sentiment"
-    ],
-    "blocked": [
-      "other"
-    ],
+    "primary": ["rate_decision", "inflation", "employment", "geopolitical"],
+    "secondary": ["risk_sentiment"],
+    "blocked": ["other"],
     "secondary_rules": {
       "event_impact_min": 0.75,
       "pair_relevance_min": 0.7,
@@ -27,10 +18,7 @@
     "event_impact_min": 0.75,
     "pair_relevance_min": 0.7,
     "impact_now_min": 0.55,
-    "allowed_latency_classes": [
-      "immediate",
-      "short_lag"
-    ],
+    "allowed_latency_classes": ["immediate", "short_lag"],
     "freshness_max_minutes": 720,
     "source_reliability_min": 0.65
   },
@@ -40,16 +28,16 @@
   },
   "publish_thresholds": {
     "low": {
-      "confidence_min": 0.7,
-      "technical_alignment_min": 0.58
+      "confidence_min": 0.66,
+      "technical_alignment_min": 0.54
     },
     "normal": {
-      "confidence_min": 0.73,
-      "technical_alignment_min": 0.62
+      "confidence_min": 0.69,
+      "technical_alignment_min": 0.58
     },
     "high": {
-      "confidence_min": 0.76,
-      "technical_alignment_min": 0.66
+      "confidence_min": 0.72,
+      "technical_alignment_min": 0.62
     }
   },
   "trend_alignment": {
