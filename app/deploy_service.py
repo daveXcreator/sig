@@ -441,8 +441,11 @@ def _html_dashboard() -> str:
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Signalyze Operator</title>
   <meta http-equiv="refresh" content="20">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
-    body {{ font-family: Arial, sans-serif; margin: 24px; background: #f4f6f8; color: #111; }}
+    body {{ font-family: "Space Grotesk", Arial, sans-serif; margin: 24px; background: #f4f6f8; color: #111; }}
     .card {{ background: #fff; border-radius: 10px; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }}
     h1 {{ margin-top: 0; }}
     h2 {{ margin: 8px 0; }}

@@ -109,18 +109,18 @@ def _passes_hard_gate(
     return True, None
 
 
-def _passes_bucket_thresholds(
+def _threshold_failure_reason(
     confidence: float,
     context: MarketContext,
     bucket: str,
     strategy: MajorEventStrategyConfig,
-) -> bool:
+) -> str | None:
     bucket_rules = strategy.publish_thresholds[bucket]
     if confidence < float(bucket_rules["confidence_min"]):
-        return False
+        return "threshold_confidence_low"
     if context.technical_alignment_score < float(bucket_rules["technical_alignment_min"]):
-        return False
-    return True
+        return "threshold_technical_alignment_low"
+    return None
 
 
 def _passes_trend_alignment(
@@ -262,12 +262,18 @@ def select_publishable_signals_by_strategy(
 
         bucket = _volatility_bucket(context.atr_percentile, strategy)
         confidence = float(getattr(decision, "confidence_calibrated", signal.confidence_calibrated))
-        if not _passes_bucket_thresholds(confidence=confidence, context=context, bucket=bucket, strategy=strategy):
+        threshold_reason = _threshold_failure_reason(
+            confidence=confidence,
+            context=context,
+            bucket=bucket,
+            strategy=strategy,
+        )
+        if threshold_reason is not None:
             stats["failed_thresholds"] += 1
             drop_details.append(
                 {
                     "stage": "policy",
-                    "reason": "thresholds",
+                    "reason": threshold_reason,
                     "signal_id": signal.signal_id,
                     "pair": signal.pair,
                     "event_type": pair_impact.event_type,

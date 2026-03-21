@@ -224,6 +224,70 @@ class MajorEventPolicyTests(unittest.TestCase):
         self.assertEqual("policy", result.drop_details[0]["stage"])
         self.assertEqual("hard_gate_freshness_stale", result.drop_details[0]["reason"])
 
+    def test_select_publishable_signals_tracks_threshold_subreason(self):
+        strategy = _strategy_stub()
+        article = NormalizedArticle(
+            article_id="a3",
+            source="NewsAPI",
+            url="https://example.com/a3",
+            title="Dollar reacts to macro surprise",
+            summary="Macro move with weak chart confirmation.",
+            published_at="2026-03-01T18:00:00Z",
+            fetched_at="2026-03-01T18:05:00Z",
+            language="en",
+            source_reliability=0.8,
+        )
+        impact = PairImpact(
+            article_id="a3",
+            pair="USD/JPY",
+            direction_hint="bullish",
+            pair_relevance_score=0.82,
+            event_type="employment",
+            event_impact_score=0.83,
+            explanation="fixture",
+        )
+        context = MarketContext(
+            pair="USD/JPY",
+            timestamp="2026-03-01T18:06:00Z",
+            rsi=60.0,
+            trend_score=0.67,
+            volatility_regime="normal",
+            atr_percentile=0.55,
+            technical_alignment_score=0.55,
+        )
+        signal = SignalCandidate(
+            signal_id="sig_4",
+            pair="USD/JPY",
+            direction="bullish",
+            horizon="intraday",
+            confidence_raw=0.8,
+            confidence_calibrated=0.77,
+            thesis="fixture",
+            invalidation="fixture",
+            reasons=["event=employment"],
+            created_at="2026-03-01T18:07:00Z",
+        )
+        decision = SimpleNamespace(
+            decision="publish",
+            confidence_calibrated=0.77,
+            signal=signal,
+            impact_timing=SimpleNamespace(impact_now_score=0.78, impact_latency_class="immediate"),
+        )
+
+        result = select_publishable_signals_by_strategy(
+            decisions=[decision],
+            pair_impacts=[impact],
+            contexts=[context],
+            articles=[article],
+            strategy=strategy,
+        )
+
+        self.assertEqual([], result.signals)
+        self.assertEqual(1, result.stats["failed_thresholds"])
+        self.assertEqual(1, len(result.drop_details))
+        self.assertEqual("policy", result.drop_details[0]["stage"])
+        self.assertEqual("threshold_technical_alignment_low", result.drop_details[0]["reason"])
+
 
 if __name__ == "__main__":
     unittest.main()
