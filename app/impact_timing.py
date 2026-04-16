@@ -82,7 +82,7 @@ def classify_latency(impact_now_score: float) -> ImpactLatencyClass:
     score = _clamp01(impact_now_score)
     if score >= 0.75:
         return "immediate"
-    if score >= 0.55:
+    if score >= 0.48:
         return "short_lag"
     return "slow_burn"
 

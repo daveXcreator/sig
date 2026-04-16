@@ -12,7 +12,7 @@ class ImpactTimingTests(unittest.TestCase):
     def test_classify_latency_thresholds(self):
         self.assertEqual("immediate", classify_latency(0.75))
         self.assertEqual("short_lag", classify_latency(0.55))
-        self.assertEqual("slow_burn", classify_latency(0.54))
+        self.assertEqual("slow_burn", classify_latency(0.47))
 
     def test_activation_window_mapping(self):
         self.assertEqual(("now-30m", 90), activation_window_for_latency("immediate"))

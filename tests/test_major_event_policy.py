@@ -15,20 +15,20 @@ def _strategy_stub() -> SimpleNamespace:
             "primary": ["rate_decision", "inflation", "employment", "geopolitical"],
             "secondary": ["risk_sentiment"],
             "blocked": ["other"],
-            "secondary_rules": {"event_impact_min": 0.85, "pair_relevance_min": 0.8, "impact_now_min": 0.75},
+            "secondary_rules": {"event_impact_min": 0.75, "pair_relevance_min": 0.7, "impact_now_min": 0.65},
         },
         hard_gate={
-            "event_impact_min": 0.75,
-            "pair_relevance_min": 0.7,
-            "impact_now_min": 0.65,
-            "allowed_latency_classes": ["immediate"],
-            "freshness_max_minutes": 120,
-            "source_reliability_min": 0.7,
+            "event_impact_min": 0.60,
+            "pair_relevance_min": 0.55,
+            "impact_now_min": 0.50,
+            "allowed_latency_classes": ["immediate", "short_lag"],
+            "freshness_max_minutes": 1440,
+            "source_reliability_min": 0.60,
         },
         publish_thresholds={
-            "low": {"confidence_min": 0.7, "technical_alignment_min": 0.58},
-            "normal": {"confidence_min": 0.73, "technical_alignment_min": 0.62},
-            "high": {"confidence_min": 0.76, "technical_alignment_min": 0.66},
+            "low": {"confidence_min": 0.58, "technical_alignment_min": 0.40},
+            "normal": {"confidence_min": 0.62, "technical_alignment_min": 0.45},
+            "high": {"confidence_min": 0.66, "technical_alignment_min": 0.50},
         },
     )
 
@@ -167,7 +167,7 @@ class MajorEventPolicyTests(unittest.TestCase):
             url="https://example.com/a2",
             title="Fed officials discuss rates",
             summary="Macro chatter around USD and policy expectations.",
-            published_at="2026-03-01T08:00:00Z",
+            published_at="2026-02-28T16:00:00Z",
             fetched_at="2026-03-01T18:05:00Z",
             language="en",
             source_reliability=0.8,
@@ -253,7 +253,7 @@ class MajorEventPolicyTests(unittest.TestCase):
             trend_score=0.67,
             volatility_regime="normal",
             atr_percentile=0.55,
-            technical_alignment_score=0.55,
+            technical_alignment_score=0.38,
         )
         signal = SignalCandidate(
             signal_id="sig_4",

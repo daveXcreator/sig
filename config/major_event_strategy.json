@@ -1,26 +1,26 @@
 {
   "metadata": {
     "name": "major_event_strategy",
-    "version": "1.0.0",
-    "description": "Major-event-first FX signal policy with deterministic gating and setup rules."
+    "version": "1.1.0",
+    "description": "Major-event-first FX signal policy with deterministic gating and setup rules. Tuned for live signal generation."
   },
   "event_universe": {
     "primary": ["rate_decision", "inflation", "employment", "geopolitical"],
     "secondary": ["risk_sentiment"],
     "blocked": ["other"],
     "secondary_rules": {
-      "event_impact_min": 0.75,
-      "pair_relevance_min": 0.7,
-      "impact_now_min": 0.65
+      "event_impact_min": 0.65,
+      "pair_relevance_min": 0.60,
+      "impact_now_min": 0.55
     }
   },
   "hard_gate": {
-    "event_impact_min": 0.75,
-    "pair_relevance_min": 0.7,
-    "impact_now_min": 0.55,
+    "event_impact_min": 0.50,
+    "pair_relevance_min": 0.45,
+    "impact_now_min": 0.40,
     "allowed_latency_classes": ["immediate", "short_lag"],
-    "freshness_max_minutes": 720,
-    "source_reliability_min": 0.65
+    "freshness_max_minutes": 2880,
+    "source_reliability_min": 0.50
   },
   "volatility_buckets": {
     "low_max_atr_percentile": 0.33,
@@ -28,21 +28,21 @@
   },
   "publish_thresholds": {
     "low": {
-      "confidence_min": 0.66,
-      "technical_alignment_min": 0.54
+      "confidence_min": 0.50,
+      "technical_alignment_min": 0.35
     },
     "normal": {
-      "confidence_min": 0.69,
-      "technical_alignment_min": 0.58
+      "confidence_min": 0.54,
+      "technical_alignment_min": 0.40
     },
     "high": {
-      "confidence_min": 0.72,
-      "technical_alignment_min": 0.62
+      "confidence_min": 0.58,
+      "technical_alignment_min": 0.45
     }
   },
   "trend_alignment": {
-    "bullish_min_trend_score": 0.52,
-    "bearish_max_trend_score": 0.48
+    "bullish_min_trend_score": 0.50,
+    "bearish_max_trend_score": 0.50
   },
   "entry_and_risk": {
     "lookback_bars_1h": 8,

@@ -12,9 +12,9 @@ from app.schemas import MarketContext, PairImpact, SignalCandidate
 
 Decision = Literal["publish", "hold", "reject"]
 
-PUBLISH_THRESHOLD = 0.67
-HOLD_THRESHOLD = 0.58
-INTERCEPT = -1.85
+PUBLISH_THRESHOLD = 0.55
+HOLD_THRESHOLD = 0.45
+INTERCEPT = -0.95
 
 
 def _clamp01(value: float) -> float:
@@ -120,10 +120,8 @@ def apply_timing_gate(base_decision: Decision, impact_timing: ImpactTiming) -> D
     if base_decision != "publish":
         return base_decision
 
-    if impact_timing.impact_latency_class == "immediate":
+    if impact_timing.impact_latency_class in ("immediate", "short_lag"):
         return "publish"
-    if impact_timing.impact_latency_class == "short_lag":
-        return "hold"
     return "reject"
 
 

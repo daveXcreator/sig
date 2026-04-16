@@ -1,11 +1,11 @@
 {
   "method": "platt_logit",
-  "slope": 0.7158768319702948,
-  "intercept": 0.10121489676564037,
-  "fitted_samples": 200,
-  "source": "mock_outcomes",
-  "brier_before": 0.2233499360847335,
-  "brier_after": 0.22107391418467526,
-  "generated_at": "2026-03-05T18:15:04.141337Z",
-  "min_samples": 120
+  "slope": 1.0,
+  "intercept": 0.0,
+  "fitted_samples": 0,
+  "source": "identity_reset",
+  "brier_before": 0.0,
+  "brier_after": 0.0,
+  "generated_at": "2026-04-16T19:59:00Z",
+  "min_samples": 100
 }
