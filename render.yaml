@@ -21,13 +21,13 @@ services:
       - key: FETCH_INTERVAL_MINUTES
         value: "15"
       - key: ENABLE_PUBLIC_POSTING
-        value: "false"
+        value: "true"
       - key: ENABLE_ECONOMIC_CALENDAR
         value: "true"
       - key: ENABLE_CONFIDENCE_CALIBRATION
         value: "true"
       - key: MAX_PUBLISHABLE_SIGNALS_PER_RUN
-        value: "3"
+        value: "2"
       - key: RUN_HISTORY_PATH
         value: /var/data/run_history.jsonl
       - key: CALIBRATION_MODEL_PATH
