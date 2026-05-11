@@ -125,6 +125,81 @@ def apply_timing_gate(base_decision: Decision, impact_timing: ImpactTiming) -> D
     return "reject"
 
 
+_EVENT_LABELS: dict[str, str] = {
+    "rate_decision": "central bank rate decision",
+    "inflation": "inflation data release",
+    "employment": "employment report",
+    "geopolitical": "geopolitical development",
+    "risk_sentiment": "shift in risk sentiment",
+    "other": "macro event",
+}
+
+_VOLATILITY_LABELS: dict[str, str] = {
+    "low": "low-volatility",
+    "normal": "moderate-volatility",
+    "high": "elevated-volatility",
+}
+
+
+def _build_thesis(
+    pair_impact: PairImpact,
+    market_context: MarketContext,
+    direction: str,
+    confidence: float,
+) -> str:
+    event_label = _EVENT_LABELS.get(pair_impact.event_type, pair_impact.event_type)
+    vol_label = _VOLATILITY_LABELS.get(market_context.volatility_regime, "")
+    pair = pair_impact.pair
+
+    # Trend context
+    trend = market_context.trend_score
+    if trend >= 0.65:
+        trend_phrase = "strong bullish trend"
+    elif trend >= 0.52:
+        trend_phrase = "mild bullish bias"
+    elif trend <= 0.35:
+        trend_phrase = "strong bearish trend"
+    elif trend <= 0.48:
+        trend_phrase = "mild bearish bias"
+    else:
+        trend_phrase = "neutral trend"
+
+    # RSI context
+    rsi = market_context.rsi
+    if rsi >= 70:
+        rsi_phrase = f"RSI overbought at {rsi:.0f}"
+    elif rsi <= 30:
+        rsi_phrase = f"RSI oversold at {rsi:.0f}"
+    else:
+        rsi_phrase = f"RSI at {rsi:.0f}"
+
+    thesis = (
+        f"{pair} {direction} — driven by {event_label}. "
+        f"Technical context: {trend_phrase} in a {vol_label} environment, {rsi_phrase}. "
+        f"Confidence {confidence:.0%}."
+    )
+    return thesis
+
+
+def _build_invalidation(pair: str, direction: str, market_context: MarketContext) -> str:
+    if direction == "bullish":
+        against = "bearish"
+        level = "below recent support"
+    else:
+        against = "bullish"
+        level = "above recent resistance"
+
+    vol = market_context.volatility_regime
+    if vol == "high":
+        timeframe = "4h"
+    else:
+        timeframe = "1h"
+
+    return (
+        f"Invalidate if a {timeframe} candle closes {against} {level}. "
+        f"Exit immediately if {pair} reverses with momentum against the signal direction."
+    )
+
 def build_score_inputs(
     pair_impact: PairImpact,
     market_context: MarketContext,
@@ -214,8 +289,8 @@ class WeightedSignalEngine:
             horizon="intraday",
             confidence_raw=confidence_raw,
             confidence_calibrated=confidence_calibrated,
-            thesis=f"{pair_impact.event_type} signal with technical confirmation",
-            invalidation="Invalidate if 1h candle closes against direction with weak momentum.",
+            thesis=_build_thesis(pair_impact, market_context, direction, confidence_calibrated),
+            invalidation=_build_invalidation(pair_impact.pair, direction, market_context),
             reasons=reasons,
             created_at=datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         )
