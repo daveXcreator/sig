@@ -635,7 +635,7 @@ def run_live_v2(enable_x: bool = False, publish_enabled: bool = True) -> dict[st
                 }
             )
 
-    publish_candidates = [signal for signal in publishable if signal.signal_id in execution_plans]
+    publish_candidates = list(publishable)
     run_metrics["publish_candidates"] = len(publish_candidates)
 
     decision_confidence = {

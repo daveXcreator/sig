@@ -29,15 +29,15 @@
   "publish_thresholds": {
     "low": {
       "confidence_min": 0.50,
-      "technical_alignment_min": 0.35
+      "technical_alignment_min": 0.15
     },
     "normal": {
       "confidence_min": 0.54,
-      "technical_alignment_min": 0.40
+      "technical_alignment_min": 0.20
     },
     "high": {
       "confidence_min": 0.58,
-      "technical_alignment_min": 0.45
+      "technical_alignment_min": 0.25
     }
   },
   "trend_alignment": {
